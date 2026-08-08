@@ -82,5 +82,5 @@ The **Verification Desk** UI presents these as inspectable tabs. The goal is to 
 ---
 
 <div align="center">
-  <sub>Built for the Open Innovation Hackathon. SafeHire AI runs entirely on the host device.</sub>
+  <sub>Built for the Open Innovation under International Innovation Challenge Hackathon. SafeHire AI runs entirely on the host device.</sub>
 </div>
