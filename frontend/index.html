@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dossier">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SafeHire AI — Verification Desk</title>
+<style>
+  /*
+    Design note: fonts are system stacks on purpose, not a CDN font import.
+    SafeHire AI's whole premise is "runs fully offline" — the UI shouldn't
+    quietly depend on a network font request to look right.
+  */
+  :root{
+    --font-serif: "Iowan Old Style", "Sitka Text", "Palatino Linotype", Palatino, Georgia, serif;
+    --font-sans: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    --radius: 10px;
+  }
+
+  html[data-theme="dossier"]{
+    --bg: #11141A; --bg-alt: #171B23; --surface: #1B1F29; --surface-2: #20242F;
+    --border: #2E3340; --text: #EDEAE3; --text-muted: #9B9788; --text-faint: #656256;
+    --gold: #D4AF37; --gold-light: #FBE695; --gold-deep: #8A6D14;
+    --lavender: #B9A9E0; --danger: #E17368; --amber: #E0A62C;
+    --shadow: 0 12px 30px rgba(0,0,0,0.35);
+  }
+  html[data-theme="daylight"]{
+    --bg: #F7F4EC; --bg-alt: #FFFFFF; --surface: #FFFFFF; --surface-2: #F2EEFA;
+    --border: #E4DEF2; --text: #1E1B29; --text-muted: #6B6478; --text-faint: #9891A3;
+    --gold: #B8901F; --gold-light: #FBE695; --gold-deep: #8A6D14;
+    --lavender: #7F6FB0; --danger: #C0433B; --amber: #B67A12;
+    --shadow: 0 12px 30px rgba(30,27,41,0.08);
+  }
+
+  * { box-sizing: border-box; }
+  body{
+    margin:0; background:var(--bg); color:var(--text); font-family:var(--font-sans);
+    line-height:1.5; transition: background .25s ease, color .25s ease;
+  }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding: 28px 24px 60px; }
+
+  /* ---------- Header ---------- */
+  header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; flex-wrap:wrap; gap:14px;}
+  .wordmark{ display:flex; align-items:baseline; gap:12px; }
+  .wordmark h1{
+    font-family:var(--font-serif); font-weight:600; font-size:26px; letter-spacing:0.5px; margin:0;
+  }
+  .wordmark .eyebrow{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:1.5px; color:var(--text-muted);
+    text-transform:uppercase;
+  }
+  .header-right{ display:flex; align-items:center; gap:16px; }
+  .case-id{ font-family:var(--font-mono); font-size:12px; color:var(--text-faint); }
+
+  .theme-toggle{
+    display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border);
+    border-radius:20px; padding:5px 6px; cursor:pointer; user-select:none;
+  }
+  .theme-toggle .track{
+    width:34px; height:18px; border-radius:9px; background:var(--surface-2); position:relative; border:1px solid var(--border);
+  }
+  .theme-toggle .knob{
+    position:absolute; top:1px; left:1px; width:14px; height:14px; border-radius:50%;
+    background:var(--gold); transition: transform .2s ease;
+  }
+  html[data-theme="daylight"] .theme-toggle .knob{ transform: translateX(16px); }
+  .theme-toggle span.label{ font-size:12px; color:var(--text-muted); font-family:var(--font-mono); }
+
+  /* ---------- Layout ---------- */
+  .desk{ display:grid; grid-template-columns: 380px 1fr; gap:20px; align-items:start; }
+  @media (max-width: 880px){ .desk{ grid-template-columns: 1fr; } }
+
+  .panel{
+    background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:22px;
+  }
+  .panel h2{
+    font-family:var(--font-serif); font-size:17px; font-weight:600; margin:0 0 4px;
+  }
+  .panel .sub{ font-size:13px; color:var(--text-muted); margin:0 0 18px; }
+
+  /* ---------- Inspection tray (left) ---------- */
+  label.field-label{ display:block; font-size:12px; font-family:var(--font-mono); color:var(--text-muted); letter-spacing:0.5px; text-transform:uppercase; margin-bottom:6px; }
+
+  select#docType{
+    width:100%; background:var(--surface-2); color:var(--text); border:1px solid var(--border);
+    border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-sans); margin-bottom:20px;
+  }
+
+  .dropzone{
+    border:1.5px dashed var(--border); border-radius:12px; padding:26px 16px; text-align:center;
+    cursor:pointer; transition: border-color .15s ease, background .15s ease; margin-bottom:16px;
+  }
+  .dropzone:hover, .dropzone.drag{ border-color:var(--gold); background:var(--surface-2); }
+  .dropzone svg{ width:26px; height:26px; stroke:var(--text-muted); margin-bottom:8px; }
+  .dropzone .primary{ font-size:14px; color:var(--text); margin-bottom:2px; }
+  .dropzone .secondary{ font-size:12px; color:var(--text-faint); }
+  .dropzone .filename{ font-family:var(--font-mono); font-size:13px; color:var(--gold); margin-top:8px; word-break:break-all; }
+  input#fileInput{ display:none; }
+
+  details.weights{ margin-bottom:18px; border-top:1px solid var(--border); padding-top:14px; }
+  details.weights summary{ cursor:pointer; font-size:13px; color:var(--text-muted); font-family:var(--font-mono); letter-spacing:0.3px; }
+  .weight-row{ display:flex; align-items:center; gap:10px; margin-top:12px; }
+  .weight-row label{ flex:0 0 130px; font-size:12px; color:var(--text-muted); }
+  .weight-row input[type=range]{ flex:1; accent-color: var(--gold); }
+  .weight-row .val{ font-family:var(--font-mono); font-size:12px; width:28px; text-align:right; color:var(--text-faint); }
+
+  button#runBtn{
+    width:100%; background:var(--gold); color:var(--bg); border:none; border-radius:10px;
+    padding:13px; font-size:14px; font-weight:600; cursor:pointer; font-family:var(--font-sans);
+    transition: background .15s ease, opacity .15s ease;
+  }
+  button#runBtn:disabled{ opacity:0.45; cursor:not-allowed; }
+  button#runBtn:not(:disabled):hover{ background:var(--gold-light); }
+
+  .stepper{ margin-top:18px; display:none; }
+  .stepper.active{ display:block; }
+  .stepper .stage{
+    display:flex; align-items:center; gap:10px; font-size:13px; color:var(--text-faint);
+    padding:6px 0; font-family:var(--font-mono);
+  }
+  .stepper .stage .dot{
+    width:7px; height:7px; border-radius:50%; background:var(--border); flex:none;
+    transition: background .2s ease;
+  }
+  .stepper .stage.done{ color:var(--text); }
+  .stepper .stage.done .dot{ background:var(--gold); }
+
+  /* ---------- Report (right) ---------- */
+  .report-empty{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+    padding:60px 20px; color:var(--text-faint);
+  }
+  .report-empty svg{ width:36px; height:36px; stroke:var(--text-faint); margin-bottom:14px; }
+  .report-empty .t1{ font-family:var(--font-serif); font-size:17px; color:var(--text-muted); margin-bottom:4px; }
+  .report-empty .t2{ font-size:13px; }
+
+  .report-body{ display:none; }
+  .report-body.active{ display:block; }
+
+  .seal-row{ display:flex; gap:26px; align-items:center; flex-wrap:wrap; margin-bottom:26px; }
+  .seal-wrap{ flex:none; }
+  .verdict-block{ flex:1; min-width:200px; }
+  .verdict-label{ font-family:var(--font-mono); font-size:11px; letter-spacing:1.2px; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; }
+  .verdict-text{ font-family:var(--font-serif); font-size:22px; font-weight:600; margin-bottom:10px; }
+  .verdict-desc{ font-size:13px; color:var(--text-muted); max-width:360px; }
+  .badge{ display:inline-block; padding:4px 12px; border-radius:14px; font-size:11px; font-weight:600; font-family:var(--font-mono); letter-spacing:0.4px; }
+
+  .exhibits{ display:grid; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); gap:12px; margin-bottom:24px; }
+  .exhibit{ background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+  .exhibit .tag{ font-family:var(--font-mono); font-size:10px; color:var(--text-faint); letter-spacing:1px; text-transform:uppercase; }
+  .exhibit .name{ font-size:13px; color:var(--text); margin:3px 0 8px; }
+  .exhibit .score-row{ display:flex; align-items:baseline; gap:6px; margin-bottom:8px; }
+  .exhibit .score{ font-family:var(--font-mono); font-size:20px; font-weight:600; }
+  .exhibit .bar-track{ height:5px; border-radius:3px; background:var(--border); overflow:hidden; }
+  .exhibit .bar-fill{ height:100%; background:var(--gold); border-radius:3px; transition: width .5s ease; }
+
+  .tabs{ display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:16px; }
+  .tab-btn{
+    background:none; border:none; color:var(--text-faint); font-size:13px; padding:9px 14px;
+    cursor:pointer; font-family:var(--font-sans); border-bottom:2px solid transparent; margin-bottom:-1px;
+  }
+  .tab-btn.active{ color:var(--gold); border-bottom-color:var(--gold); }
+  .tab-panel{ display:none; }
+  .tab-panel.active{ display:block; }
+
+  .flag{
+    background:var(--surface-2); border-left:3px solid var(--danger); border-radius:0 8px 8px 0;
+    padding:9px 14px; font-size:13px; margin-bottom:7px;
+  }
+  .no-flags{ font-size:13px; color:var(--text-muted); }
+
+  .heatmap-row{ display:flex; gap:20px; flex-wrap:wrap; }
+  .heatmap-row img{ width:260px; max-width:100%; border-radius:10px; border:1px solid var(--border); }
+  .heatmap-caption{ font-size:12px; color:var(--text-muted); max-width:320px; }
+
+  pre#ocrText{
+    background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:14px;
+    font-family:var(--font-mono); font-size:12.5px; white-space:pre-wrap; max-height:220px; overflow:auto; color:var(--text);
+  }
+  table#metaTable{ width:100%; border-collapse:collapse; font-size:13px; }
+  table#metaTable td{ padding:7px 4px; border-bottom:1px solid var(--border); }
+  table#metaTable td:first-child{ color:var(--text-muted); font-family:var(--font-mono); font-size:12px; width:40%; }
+
+  footer{ margin-top:34px; text-align:center; font-size:12px; color:var(--text-faint); font-family:var(--font-mono); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="wordmark">
+      <h1>SafeHire AI</h1>
+      <span class="eyebrow">Team Oblivion · Open Innovation</span>
+    </div>
+    <div class="header-right">
+      <span class="case-id" id="caseId">CASE FILE — UNOPENED</span>
+      <div class="theme-toggle" id="themeToggle" role="button" aria-label="Toggle color theme">
+        <span class="label" id="themeLabel">Dossier</span>
+        <div class="track"><div class="knob"></div></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="desk">
+
+    <!-- LEFT: Inspection tray -->
+    <div class="panel">
+      <h2>Inspection tray</h2>
+      <p class="sub">Everything below runs on this machine. No document ever leaves it.</p>
+
+      <label class="field-label" for="docType">Document type</label>
+      <select id="docType">
+        <option value="resume">Resume</option>
+        <option value="offer_letter">Offer letter</option>
+        <option value="certificate">Certificate</option>
+        <option value="id_proof">ID proof</option>
+      </select>
+
+      <div class="dropzone" id="dropzone">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M12 4L7 9M12 4l5 5"/><path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg>
+        <div class="primary">Drop a document here, or click to browse</div>
+        <div class="secondary">PDF, PNG, or JPG</div>
+        <div class="filename" id="filename"></div>
+      </div>
+      <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg">
+
+      <details class="weights">
+        <summary>Adjust evidence weighting</summary>
+        <div class="weight-row">
+          <label for="wOcr">OCR confidence</label>
+          <input type="range" id="wOcr" min="0" max="100" value="10">
+          <span class="val" id="wOcrVal">10</span>
+        </div>
+        <div class="weight-row">
+          <label for="wForensics">Forensic integrity</label>
+          <input type="range" id="wForensics" min="0" max="100" value="35">
+          <span class="val" id="wForensicsVal">35</span>
+        </div>
+        <div class="weight-row">
+          <label for="wSemantic">Semantic match</label>
+          <input type="range" id="wSemantic" min="0" max="100" value="30">
+          <span class="val" id="wSemanticVal">30</span>
+        </div>
+        <div class="weight-row">
+          <label for="wAi">Human authorship</label>
+          <input type="range" id="wAi" min="0" max="100" value="25">
+          <span class="val" id="wAiVal">25</span>
+        </div>
+      </details>
+
+      <button id="runBtn" disabled>Run verification</button>
+
+      <div class="stepper" id="stepper">
+        <div class="stage" data-stage>Reading document</div>
+        <div class="stage" data-stage>Running OCR</div>
+        <div class="stage" data-stage>Scanning for tampering</div>
+        <div class="stage" data-stage>Matching semantic patterns</div>
+        <div class="stage" data-stage>Estimating authorship</div>
+        <div class="stage" data-stage>Calculating validity score</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Verification report -->
+    <div class="panel">
+      <h2>Verification report</h2>
+      <p class="sub">Every score below is explainable — click a tab for the underlying evidence.</p>
+
+      <div class="report-empty" id="reportEmpty">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/></svg>
+        <div class="t1">No case open yet</div>
+        <div class="t2">Upload a document on the left to begin an inspection.</div>
+      </div>
+
+      <div class="report-body" id="reportBody">
+        <div class="seal-row">
+          <div class="seal-wrap">
+            <svg width="150" height="150" viewBox="0 0 240 240">
+              <defs>
+                <path id="ringPath" d="M120,24 a96,96 0 1,1 -0.1,0" fill="none"/>
+              </defs>
+              <circle cx="120" cy="120" r="108" fill="none" stroke="var(--border)" stroke-width="1"/>
+              <text font-family="ui-monospace, monospace" font-size="10.5" letter-spacing="2.5" fill="var(--gold)">
+                <textPath href="#ringPath" startOffset="0%">SAFEHIRE AI &#183; VERIFIED OFFLINE &#183; SAFEHIRE AI &#183; VERIFIED OFFLINE &#183;</textPath>
+              </text>
+              <circle id="sealInner" cx="120" cy="120" r="78" fill="var(--surface-2)" stroke="var(--gold)" stroke-width="1.5"/>
+              <text id="sealScore" x="120" y="126" text-anchor="middle" font-family="ui-monospace, monospace" font-size="42" font-weight="600" fill="var(--text)">--</text>
+              <text x="120" y="150" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" letter-spacing="1.5" fill="var(--text-muted)">VALIDITY</text>
+            </svg>
+          </div>
+          <div class="verdict-block">
+            <div class="verdict-label">Verdict</div>
+            <div class="verdict-text" id="verdictText">—</div>
+            <span class="badge" id="verdictBadge"></span>
+            <div class="verdict-desc" id="verdictDesc"></div>
+          </div>
+        </div>
+
+        <div class="exhibits" id="exhibits"></div>
+
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="forensics">Forensic evidence</button>
+          <button class="tab-btn" data-tab="text">Extracted text</button>
+          <button class="tab-btn" data-tab="meta">Metadata</button>
+          <button class="tab-btn" data-tab="ai">AI Authorship</button>
+        </div>
+
+        <div class="tab-panel active" id="tab-forensics">
+          <div class="heatmap-row">
+            <img id="heatmapImg" src="" alt="Error level analysis heatmap">
+            <div class="heatmap-caption">
+              Error Level Analysis heatmap — bright regions show inconsistent compression history, a sign the document was edited after its original save.
+              <div id="flagsList" style="margin-top:12px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-text">
+          <pre id="ocrText"></pre>
+        </div>
+
+        <div class="tab-panel" id="tab-meta">
+          <table id="metaTable"></table>
+        </div>
+
+        <div class="tab-panel" id="tab-ai">
+          <div id="aiAnswer" style="font-size:16px; font-weight:600; margin-bottom:12px;"></div>
+          <div style="font-size:13px; color:var(--text-muted);">
+            Signals:
+            <ul id="aiSignalsList" style="margin-top:6px; padding-left:20px;"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>SafeHire AI runs entirely on this device — no document data is transmitted over a network.</footer>
+</div>
+
+<script>
+  // ---------- Theme toggle ----------
+  const root = document.documentElement;
+  const themeToggle = document.getElementById('themeToggle');
+  const themeLabel = document.getElementById('themeLabel');
+  themeToggle.addEventListener('click', () => {
+    const isDossier = root.getAttribute('data-theme') === 'dossier';
+    root.setAttribute('data-theme', isDossier ? 'daylight' : 'dossier');
+    themeLabel.textContent = isDossier ? 'Daylight' : 'Dossier';
+  });
+
+  // ---------- File selection ----------
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const filenameEl = document.getElementById('filename');
+  const runBtn = document.getElementById('runBtn');
+  const caseId = document.getElementById('caseId');
+  let selectedFile = null;
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault(); dropzone.classList.remove('drag');
+    if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => { if (fileInput.files.length) setFile(fileInput.files[0]); });
+
+  function setFile(file) {
+    selectedFile = file;
+    filenameEl.textContent = file.name;
+    runBtn.disabled = false;
+    caseId.textContent = 'CASE FILE — ' + file.name.toUpperCase();
+  }
+
+  // ---------- Weight sliders ----------
+  ['wOcr','wForensics','wSemantic','wAi'].forEach(id => {
+    const input = document.getElementById(id);
+    const val = document.getElementById(id + 'Val');
+    input.addEventListener('input', () => { val.textContent = input.value; });
+  });
+
+  // ---------- Verification run ----------
+  const stepper = document.getElementById('stepper');
+  const stages = document.querySelectorAll('.stage');
+  const reportEmpty = document.getElementById('reportEmpty');
+  const reportBody = document.getElementById('reportBody');
+
+  function sleep(ms){ return new Promise(res => setTimeout(res, ms)); }
+
+  async function animateStages() {
+    for (const stage of stages) {
+      stage.classList.add('done');
+      await sleep(380);
+    }
+  }
+
+  runBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+    runBtn.disabled = true;
+    stages.forEach(s => s.classList.remove('done'));
+    stepper.classList.add('active');
+    reportBody.classList.remove('active');
+    reportEmpty.style.display = 'none';
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('doc_type', document.getElementById('docType').value);
+    formData.append('w_ocr', document.getElementById('wOcr').value);
+    formData.append('w_forensics', document.getElementById('wForensics').value);
+    formData.append('w_semantic', document.getElementById('wSemantic').value);
+    formData.append('w_ai', document.getElementById('wAi').value);
+
+    try {
+      const [_, response] = await Promise.all([
+        animateStages(),
+        fetch('/api/verify', { method: 'POST', body: formData })
+      ]);
+      if (!response.ok) throw new Error('Server returned ' + response.status);
+      const data = await response.json();
+      renderReport(data);
+    } catch (err) {
+      alert('Verification failed: ' + err.message);
+      reportEmpty.style.display = 'flex';
+    } finally {
+      stepper.classList.remove('active');
+      runBtn.disabled = false;
+    }
+  });
+
+  function verdictColor(score) {
+    if (score >= 75) return getComputedStyle(root).getPropertyValue('--gold').trim();
+    if (score >= 50) return getComputedStyle(root).getPropertyValue('--amber').trim();
+    return getComputedStyle(root).getPropertyValue('--danger').trim();
+  }
+
+  function renderReport(data) {
+    reportBody.classList.add('active');
+
+    const color = verdictColor(data.final_score);
+    document.getElementById('sealScore').textContent = data.final_score + '%';
+    document.getElementById('sealInner').setAttribute('stroke', color);
+    document.getElementById('verdictText').textContent = data.verdict;
+    const badge = document.getElementById('verdictBadge');
+    badge.textContent = data.final_score + '% validity score';
+    badge.style.background = color;
+    badge.style.color = getComputedStyle(root).getPropertyValue('--bg').trim();
+
+    const descMap = {
+      'Likely authentic': 'Signals are consistent with an authentic, unaltered document.',
+      'Needs manual review': 'Mixed signals — a human reviewer should confirm before proceeding.',
+      'High tamper/AI-generation risk': 'Multiple signals suggest tampering or AI-generated content.',
+    };
+    document.getElementById('verdictDesc').textContent = descMap[data.verdict] || '';
+
+    // Exhibits
+    const exhibitDefs = [
+      { key: 'OCR confidence', tag: 'Exhibit A' },
+      { key: 'Forensic integrity', tag: 'Exhibit B' },
+      { key: 'Semantic match', tag: 'Exhibit C' },
+      { key: 'Human-authorship likelihood', tag: 'Exhibit D' },
+    ];
+    const exhibitsEl = document.getElementById('exhibits');
+    exhibitsEl.innerHTML = '';
+    exhibitDefs.forEach(def => {
+      const score = data.breakdown[def.key];
+      const div = document.createElement('div');
+      div.className = 'exhibit';
+      div.innerHTML = `
+        <div class="tag">${def.tag}</div>
+        <div class="name">${def.key}</div>
+        <div class="score-row"><span class="score">${score}%</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${score}%"></div></div>
+      `;
+      exhibitsEl.appendChild(div);
+    });
+
+    // Forensics tab
+    document.getElementById('heatmapImg').src = 'data:image/png;base64,' + data.forensics.heatmap_base64;
+    const flagsList = document.getElementById('flagsList');
+    if (data.forensics.flags.length) {
+      flagsList.innerHTML = data.forensics.flags.map(f => `<div class="flag">${f}</div>`).join('');
+    } else {
+      flagsList.innerHTML = '<div class="no-flags">No forensic red flags detected.</div>';
+    }
+
+    // Text tab
+    document.getElementById('ocrText').textContent = data.ocr.extracted_text || '(no text extracted)';
+
+    // Metadata tab
+    const metaTable = document.getElementById('metaTable');
+    metaTable.innerHTML = Object.entries(data.metadata)
+      .map(([k, v]) => `<tr><td>${k}</td><td>${Array.isArray(v) ? v.join(' × ') : v}</td></tr>`).join('');
+
+    // AI Authorship tab
+    document.getElementById('aiAnswer').textContent = data.ai_detection.ai_modified_answer || 'No answer provided.';
+    const signalsList = document.getElementById('aiSignalsList');
+    if (data.ai_detection.signals) {
+      signalsList.innerHTML = Object.entries(data.ai_detection.signals)
+        .map(([k, v]) => `<li><strong>${k}</strong>: ${v}</li>`).join('');
+    } else {
+      signalsList.innerHTML = '<li>No signals available</li>';
+    }
+  }
+
+  // ---------- Tabs ----------
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

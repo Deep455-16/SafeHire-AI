@@ -1,0 +1,32 @@
+# SafeHire AI — dependency list
+# Everything here runs fully offline once installed. No API keys required.
+
+fastapi==0.141.1              # backend API for the designed frontend
+uvicorn==0.52.1                # ASGI server
+python-multipart==0.0.20       # required for FastAPI file uploads
+
+streamlit==1.61.1          # alternative/debug GUI
+plotly==5.24.1              # gauge chart + bar chart visuals
+
+# Document ingestion
+pymupdf==1.28.2             # PDF parsing, metadata, page rasterization (import name: fitz)
+pytesseract==0.3.13         # OCR wrapper (requires the tesseract-ocr system binary)
+pillow==12.1.1               # image handling, EXIF metadata, ELA recompression
+
+# Forensic analysis
+numpy==2.4.4                 # residual computation for Error Level Analysis
+opencv-python-headless==4.13.0.92   # heatmap colorization
+
+# Semantic matching
+scikit-learn==1.8.0          # TF-IDF vectorization + cosine similarity
+
+# --- System dependency (not pip-installable) ---
+# Tesseract OCR engine must be installed separately:
+#   Ubuntu/Debian:  sudo apt-get install tesseract-ocr
+#   macOS:          brew install tesseract
+#   Windows:        https://github.com/UB-Mannheim/tesseract/wiki
+
+# --- Production upgrade path (optional, not required for the demo) ---
+# ollama                     # local LLM runtime — pull qwen2.5:1.5b or nomic-embed-text
+# sentence-transformers       # swap-in replacement for the TF-IDF semantic matcher
+# faiss-cpu                   # vector index for semantic search at scale
