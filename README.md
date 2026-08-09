@@ -20,6 +20,23 @@ SafeHire AI combines Optical Character Recognition (OCR), forensic tamper detect
 - **AI Authorship Detection:** Detects if document attributes were manipulated or generated using AI tools (e.g. ChatGPT) by analyzing stylometric signals like burstiness and type-token ratios.
 - **Modern Verification Desk Interface:** A fully bespoke, dark/light theme web interface designed specifically for review workflows, featuring an animated wax-seal gauge.
 
+### Core Processing Pipeline
+
+Whenever a document is uploaded, it flows through a linear pipeline of 5 core modules:
+
+```mermaid
+graph TD
+    A[Document Upload] --> B[OCR & Parsing]
+    B --> C[Forensic Analysis]
+    B --> D[Semantic Match]
+    B --> E[AI Authorship Detection]
+    C --> F[Scoring Engine]
+    D --> F
+    E --> F
+    B -.Text & Confidence.-> F
+    F --> G[Final Semantic Validity Score & Verdict]
+```
+
 ---
 
 ## 🚀 Getting Started (Windows)
