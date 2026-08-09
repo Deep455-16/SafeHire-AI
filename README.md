@@ -30,7 +30,8 @@ We have provided automated batch scripts to make installation and startup seamle
 Run the `install.bat` file to automatically:
 1. Create a Python Virtual Environment (`venv`).
 2. Install all required dependencies from `requirements.txt`.
-3. Check for and automatically install **Tesseract OCR** (an essential system dependency) via `winget` if it is missing.
+3. Check for and automatically install **Tesseract OCR** (an essential system dependency) via `winget` if it is missing. 
+4. Install tesseract manually if the system gives error via https://github.com/UB-Mannheim/tesseract/wiki?utm_source=chatgpt.com.
 
 > [!TIP]
 > Just double click `install.bat` in your file explorer, or run it from your command prompt:
