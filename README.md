@@ -49,10 +49,25 @@ Once installation is complete, run the `start_app.bat` file to launch the SafeHi
 
 ---
 
-## 💻 Manual Setup (macOS / Linux / Custom)
+## 💻 Manual Setup (Windows / macOS / Linux / Custom)
 
 If you are not using the batch scripts, you can manually start the server:
 
+### Windows Manual Setup
+```cmd
+:: 1. Install the system OCR engine (one-time)
+winget install -e --id UB-Mannheim.TesseractOCR
+
+:: 2. Set up virtual environment and install dependencies
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+
+:: 3. Launch the application
+uvicorn api:app --reload
+```
+
+### macOS / Linux Manual Setup
 ```bash
 # 1. Install the system OCR engine (one-time)
 sudo apt-get install tesseract-ocr        # Ubuntu/Debian
@@ -60,7 +75,7 @@ sudo apt-get install tesseract-ocr        # Ubuntu/Debian
 
 # 2. Set up virtual environment and install dependencies
 python -m venv venv
-source venv/bin/activate                  # On Windows use `venv\Scripts\activate`
+source venv/bin/activate
 pip install -r requirements.txt
 
 # 3. Launch the application
